@@ -7,10 +7,15 @@ import {
   Scripts,
   ScrollRestoration
 } from "@remix-run/react";
+import { Flip, ToastContainer } from "react-toastify";
+
+import tostifyStylesheet from "react-toastify/dist/ReactToastify.css";
 import stylesheet from "~/tailwind.css";
+import { Sidebar } from "./components/Sidebar";
 
 export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: stylesheet }
+  { rel: "stylesheet", href: stylesheet },
+  { rel: "stylesheet", href: tostifyStylesheet }
 ];
 
 export const meta: MetaFunction = () => [
@@ -28,8 +33,21 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body>
-        <Outlet />
+      <body className="h-full">
+        <div>
+          <Sidebar />
+          <main className="py-10 lg:pl-72">
+            <div className="px-4 sm:px-6 lg:px-8">
+              <Outlet />
+            </div>
+          </main>
+        </div>
+
+        <ToastContainer
+          autoClose={3000}
+          transition={Flip}
+          hideProgressBar={true}
+        />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

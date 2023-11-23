@@ -1,18 +1,21 @@
+import { useEffect, useId } from "react";
+import { z } from "zod";
 import {
   Form,
   useActionData,
   useLoaderData,
   useNavigation
 } from "@remix-run/react";
-import { json, ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { createSupabaseServerClient } from "~/utils/supabase.server";
-import { z } from "zod";
-import { parse } from "@conform-to/zod";
+import { jsonWithSuccess, jsonWithError, getToast } from "remix-toast";
+import { toast as notify } from "react-toastify";
 import { conform, useForm } from "@conform-to/react";
-import { useId } from "react";
+import { parse } from "@conform-to/zod";
+import { json, ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+
+import { createSupabaseServerClient } from "~/utils/supabase.server";
 
 const submitSchema = z.object({
-  name: z.string({ required_error: "Your feed needs a name!" }).min(1),
+  name: z.string({ required_error: "Your feed needs a name!" }).min(2),
   rss: z
     .string({ required_error: "Don't forget the url for the rss!" })
     .url("That doesn't look like an url!")
@@ -20,14 +23,18 @@ const submitSchema = z.object({
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const supabase = createSupabaseServerClient({ request });
+  const { toast, headers } = await getToast(request);
+
   const { data, error } = await supabase
     .from("rss")
     .select("*")
     .order("created_at", { ascending: false });
-  if (!data) {
-    return json({ data: null, error });
+
+  if (error || !data) {
+    return jsonWithError(null, "Something went wrong!", { headers });
   }
-  return json({ data, error: null });
+
+  return json({ data, toast }, { headers });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -66,9 +73,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   ]);
 
   if (error) {
-    return json(submission);
+    return jsonWithError(submission, "There was an error saving this feed.");
   }
-  return json(submission);
+  return jsonWithSuccess(submission, "Your feed was saved!");
 };
 
 export default function Index() {
@@ -88,14 +95,22 @@ export default function Index() {
 
   const isSubmitting = navigation.state === "submitting";
 
-  if (loaderData.error) {
-    return <div>{loaderData.error.message}</div>;
+  useEffect(() => {
+    if (loaderData?.toast) {
+      notify(loaderData.toast.message, {
+        type: loaderData.toast.type
+      });
+    }
+  }, [loaderData?.toast]);
+
+  if (loaderData?.data?.length === 0) {
+    return <div>No feed</div>;
   }
 
   return (
-    <main style={{ fontFamily: "OpenSans, sans-serif", lineHeight: "1.4" }}>
+    <section style={{ fontFamily: "OpenSans, sans-serif", lineHeight: "1.4" }}>
       <h1 className="text-3xl font-bold">Welcome to Remix</h1>
-      {loaderData.data.map((rss) => {
+      {loaderData?.data.map((rss) => {
         return <div key={rss.id}>{rss.name}</div>;
       })}
       <Form method="post" {...form.props}>
@@ -139,6 +154,6 @@ export default function Index() {
           Save
         </button>
       </Form>
-    </main>
+    </section>
   );
 }
