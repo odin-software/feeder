@@ -1,17 +1,25 @@
-import type { MetaFunction, LinksFunction } from "@remix-run/node";
+import type {
+  MetaFunction,
+  LinksFunction,
+  LoaderFunctionArgs
+} from "@remix-run/node";
+import { json } from "@remix-run/node";
 import {
   Links,
   LiveReload,
   Meta,
   Outlet,
   Scripts,
-  ScrollRestoration
+  ScrollRestoration,
+  useLoaderData
 } from "@remix-run/react";
 import { Flip, ToastContainer } from "react-toastify";
 
 import tostifyStylesheet from "react-toastify/dist/ReactToastify.css";
 import stylesheet from "~/tailwind.css";
 import { Sidebar } from "./components/Sidebar";
+import { createSupabaseServerClient } from "./utils/supabase.server";
+import { getToast, jsonWithError } from "remix-toast";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -26,7 +34,29 @@ export const meta: MetaFunction = () => [
   }
 ];
 
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const supabase = createSupabaseServerClient({ request });
+  const { toast, headers } = await getToast(request);
+
+  const { data, error } = await supabase
+    .from("rss")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    return jsonWithError(null, "Something went wrong!", { headers });
+  }
+
+  return json({ data, toast }, { headers });
+};
+
 export default function App() {
+  const loaderData = useLoaderData<typeof loader>();
+  const feeds =
+    loaderData?.data.map((feed) => {
+      return { name: feed.name, href: feed.id };
+    }) ?? [];
+
   return (
     <html lang="en">
       <head>
@@ -35,7 +65,7 @@ export default function App() {
       </head>
       <body className="h-full">
         <div>
-          <Sidebar />
+          <Sidebar feeds={feeds} />
           <main className="py-10 lg:pl-72">
             <div className="px-4 sm:px-6 lg:px-8">
               <Outlet />
