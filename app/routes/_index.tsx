@@ -13,6 +13,7 @@ import { parse } from "@conform-to/zod";
 import { json, ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 
 import { createSupabaseServerClient } from "~/utils/supabase.server";
+import { getFeed } from "~/utils/parser.server";
 
 const submitSchema = z.object({
   name: z.string({ required_error: "Your feed needs a name!" }).min(2),
@@ -63,12 +64,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json(submission);
   }
   const { name, rss } = submission.value;
+  const feed = await getFeed(rss);
 
   const { error } = await supabase.from("rss").insert([
     {
       name: name,
       url: rss,
-      type: "rss"
+      type: "rss",
+      image: feed.image?.url ?? null
     }
   ]);
 

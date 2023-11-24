@@ -1,9 +1,16 @@
-import { useLoaderData } from "@remix-run/react";
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useRouteError
+} from "@remix-run/react";
 import { json, LoaderFunctionArgs } from "@remix-run/node";
 import { createSupabaseServerClient } from "~/utils/supabase.server";
 import invariant from "tiny-invariant";
 import { getToast, jsonWithError } from "remix-toast";
-import { getFeed } from "~/utils/parser.server";
+import { toast as notify } from "react-toastify";
+import { turnFeedItemsIntoSingleItems } from "~/utils/parser.server";
+import { PostsList } from "~/components/PostList";
+import { useEffect } from "react";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   invariant(params.feedId, "Feed id is required!");
@@ -18,10 +25,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     .single();
 
   if (error || !data) {
-    return jsonWithError(null, "Something went wrong!", { headers });
+    throw new Response("This feed does not exist!", {
+      status: 404
+    });
   }
 
-  const feed = await getFeed(data.url);
+  const feed = await turnFeedItemsIntoSingleItems(data.url);
 
   return json({ feed, toast }, { headers });
 };
@@ -31,15 +40,23 @@ export default function Feed() {
 
   return (
     <div>
-      {loaderData?.feed?.items.map((feed) => {
-        return (
-          <div key={feed.guid}>
-            <span>{feed.creator}</span>
-            <span>{feed.title}</span>
-            <span>{feed.pubDate}</span>
-          </div>
-        );
-      })}
+      <PostsList posts={loaderData?.feed} />
     </div>
   );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  if (isRouteErrorResponse(error)) {
+    return (
+      <div className="h-full">
+        <h1>Oops!</h1>
+        <p>
+          {error.status === 404
+            ? "This feed does not exist!"
+            : "Something went wrong!"}
+        </p>
+      </div>
+    );
+  }
 }

@@ -2,8 +2,9 @@ import Parser from "rss-parser";
 
 const parser = new Parser();
 
-type ItemType = {
+export type SingleItem = {
   fallBackTitle: string;
+  image: string;
   creator: string;
   title: string;
   link: string;
@@ -20,19 +21,52 @@ export async function getMultipleFeeds(urls: string[]) {
   return feeds;
 }
 
-export async function getFeedSortedByDate(urls: string[]) {
-  let sortedFeed = [] as ItemType[];
+/**
+ * This function takes an array of feed urls and returns an array of items
+ * sorted by date. It only returns the first 15 items from each feed.
+ * @param {string[]} urls - An array of feed urls.
+ * @returns {SingleItem[]} An array of items sorted by date.
+ */
+export async function getFeedSortedByDate(
+  urls: string[]
+): Promise<SingleItem[]> {
+  let sortedFeed = [] as SingleItem[];
   const feeds = await getMultipleFeeds(urls);
   for (const i of feeds) {
-    const newI = i.items.map((item) => {
-      return { ...item, fallBackTitle: i.title };
+    const newI = i.items.map((item, idx) => {
+      if (idx < 15) {
+        const image = i.image?.url ? i.image?.url : i.itunes?.image;
+        return { ...item, fallBackTitle: i.title, image: image };
+      }
+      return null;
     });
     //@ts-ignore
     sortedFeed = [...sortedFeed, ...newI];
   }
-  sortedFeed.sort((a, b) => {
+  const filtered = sortedFeed.filter((item) => item !== null);
+  filtered.sort((a, b) => {
     return new Date(a.pubDate) < new Date(b.pubDate) ? 1 : -1;
   });
 
-  return sortedFeed;
+  return filtered;
+}
+
+export async function turnFeedItemsIntoSingleItems(
+  url: string
+): Promise<SingleItem[]> {
+  const feed = await getFeed(url);
+  const items = feed.items;
+
+  const newItems = items.map((item) => {
+    return {
+      fallBackTitle: feed.title || "",
+      image: feed.image?.url ? feed.image?.url : feed.itunes?.image || "",
+      creator: item.creator || "",
+      title: item.title || "",
+      link: item.link || "",
+      pubDate: item.pubDate || ""
+    };
+  });
+
+  return newItems;
 }

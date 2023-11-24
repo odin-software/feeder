@@ -66,7 +66,7 @@ export default function App() {
       <body className="h-full">
         <div>
           <Sidebar feeds={feeds} />
-          <main className="py-10 lg:pl-72 bg-gradient-to-r from-cyan-500 to-blue-500">
+          <main className="py-10 lg:pl-72 bg-slate-100 min-h-screen">
             <div className="px-4 sm:px-6 lg:px-8">
               <Outlet />
             </div>
