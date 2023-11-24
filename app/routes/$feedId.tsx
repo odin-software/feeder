@@ -6,11 +6,9 @@ import {
 import { json, LoaderFunctionArgs } from "@remix-run/node";
 import { createSupabaseServerClient } from "~/utils/supabase.server";
 import invariant from "tiny-invariant";
-import { getToast, jsonWithError } from "remix-toast";
-import { toast as notify } from "react-toastify";
+import { getToast } from "remix-toast";
 import { turnFeedItemsIntoSingleItems } from "~/utils/parser.server";
 import { PostsList } from "~/components/PostList";
-import { useEffect } from "react";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   invariant(params.feedId, "Feed id is required!");
@@ -50,8 +48,8 @@ export function ErrorBoundary() {
   if (isRouteErrorResponse(error)) {
     return (
       <div className="h-full">
-        <h1>Oops!</h1>
-        <p>
+        <h1 className="text-5xl">Oops!</h1>
+        <p className="mt-4 text-2xl">
           {error.status === 404
             ? "This feed does not exist!"
             : "Something went wrong!"}
